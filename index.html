@@ -115,12 +115,14 @@
       set: function(val) {
         loaderInstance = val;
         if (loaderInstance) {
-          // Disable service worker loading dynamically
+          // Disable service worker loading dynamically and add cache-busting
           var originalLoad = loaderInstance.load;
           loaderInstance.load = function(options) {
-            if (options) {
-              options.serviceWorkerSettings = null;
-            }
+            options = options || {};
+            options.serviceWorkerSettings = null;
+            var cacheBust = 'main.dart.js?v=' + new Date().getTime();
+            options.entrypointUrl = cacheBust;
+            options.mainJsPath = cacheBust;
             return originalLoad.call(loaderInstance, options);
           };
 
