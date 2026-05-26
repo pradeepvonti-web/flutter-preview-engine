@@ -54,8 +54,31 @@
   <script>
     // Global message queue for schema/theme messages arriving before Flutter boots.
     window._flutterPreviewMessageQueue = [];
-    // Flag set to true once Flutter's Dart code starts listening.
-    window._flutterPreviewReady = false;
+
+    // Define _flutterPreviewOnMessage as a getter/setter to automatically flush the queue
+    // as soon as Flutter registers it.
+    var _onMessageFn = null;
+    Object.defineProperty(window, '_flutterPreviewOnMessage', {
+      get: function() {
+        return _onMessageFn;
+      },
+      set: function(fn) {
+        _onMessageFn = fn;
+        if (typeof fn === 'function') {
+          console.log("Flutter preview handler registered. Flushing queue of size:", window._flutterPreviewMessageQueue.length);
+          while (window._flutterPreviewMessageQueue.length > 0) {
+            var rawMsg = window._flutterPreviewMessageQueue.shift();
+            try {
+              fn(rawMsg);
+            } catch (e) {
+              console.error("Failed to forward queued message:", e);
+            }
+          }
+        }
+      },
+      configurable: true,
+      enumerable: true
+    });
 
     // Listen for postMessage from the parent window (the app builder).
     window.addEventListener('message', function (event) {
@@ -64,9 +87,11 @@
       var type = event.data.type;
       if (type !== 'SCHEMA_UPDATE' && type !== 'THEME_UPDATE') return;
 
-      if (!window._flutterPreviewReady) {
-        // Queue the message for Flutter to pick up after boot.
-        window._flutterPreviewMessageQueue.push(JSON.stringify(event.data));
+      var rawMsg = JSON.stringify(event.data);
+      if (window._flutterPreviewOnMessage) {
+        window._flutterPreviewOnMessage(rawMsg);
+      } else {
+        window._flutterPreviewMessageQueue.push(rawMsg);
       }
     });
   </script>
@@ -84,25 +109,9 @@
             let runner = await engineInitializer.initializeEngine();
             await runner.runApp();
             
-            // Flutter is now running and listening to window messages!
-            window._flutterPreviewReady = true;
-            
             // Hide the loading spinner
             var el = document.getElementById('loading');
             if (el) el.style.display = 'none';
-            
-            // Flush the message queue
-            if (window._flutterPreviewMessageQueue) {
-              while (window._flutterPreviewMessageQueue.length > 0) {
-                var rawMsg = window._flutterPreviewMessageQueue.shift();
-                try {
-                  var msg = JSON.parse(rawMsg);
-                  window.postMessage(msg, '*');
-                } catch(e) {
-                  console.error("Failed to post queued message:", e);
-                }
-              }
-            }
           };
         }
       },
