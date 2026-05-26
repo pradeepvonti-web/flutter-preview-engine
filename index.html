@@ -4,6 +4,16 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Flutter Preview Engine</title>
+  <script>
+    // Force unregister any service workers to avoid aggressive caching of main.dart.js
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function(registrations) {
+        for (var i = 0; i < registrations.length; i++) {
+          registrations[i].unregister();
+        }
+      });
+    }
+  </script>
   <style>
     /* Reset & full viewport, no scrollbars */
     *, *::before, *::after {
@@ -105,6 +115,15 @@
       set: function(val) {
         loaderInstance = val;
         if (loaderInstance) {
+          // Disable service worker loading dynamically
+          var originalLoad = loaderInstance.load;
+          loaderInstance.load = function(options) {
+            if (options) {
+              options.serviceWorkerSettings = null;
+            }
+            return originalLoad.call(loaderInstance, options);
+          };
+
           loaderInstance.didCreateEngineInitializer = async function(engineInitializer) {
             let runner = await engineInitializer.initializeEngine();
             await runner.runApp();
