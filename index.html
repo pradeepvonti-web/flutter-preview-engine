@@ -129,7 +129,7 @@
           loaderInstance.didCreateEngineInitializer = async function(engineInitializer) {
             let runner = await engineInitializer.initializeEngine();
             await runner.runApp();
-            
+
             // Hide the loading spinner
             var el = document.getElementById('loading');
             if (el) el.style.display = 'none';
@@ -139,6 +139,32 @@
       configurable: true,
       enumerable: true
     });
+
+    // Fallback: the _flutter.loader setter override above can race with
+    // flutter_bootstrap.js (which sets didCreateEngineInitializer on the same
+    // object). If our didCreateEngineInitializer gets overwritten, the spinner
+    // never hides and leaks through over the rendered app. As a safety net,
+    // hide #loading the moment the <flutter-view> element appears in the DOM.
+    (function hideLoadingWhenFlutterMounts() {
+      function hideLoading() {
+        var el = document.getElementById('loading');
+        if (el) el.style.display = 'none';
+      }
+      if (document.querySelector('flutter-view')) {
+        hideLoading();
+        return;
+      }
+      var observer = new MutationObserver(function() {
+        if (document.querySelector('flutter-view')) {
+          hideLoading();
+          observer.disconnect();
+        }
+      });
+      observer.observe(document.body, { childList: true, subtree: true });
+      // Also force-hide after 15 s as a last resort — by then Flutter has
+      // either booted or the user has bigger problems than a stale spinner.
+      setTimeout(function() { hideLoading(); observer.disconnect(); }, 15000);
+    })();
   </script>
   <script src="flutter_bootstrap.js" defer></script>
 </body>
