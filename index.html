@@ -95,7 +95,7 @@
     // received by Dart's `html.window.onMessage` do not always satisfy
     // `data is Map`, so we stringify here and route through the proven
     // string callback path (`_flutterPreviewOnMessage`).
-    var FORWARDED_TYPES = ['SCHEMA_UPDATE', 'THEME_UPDATE', 'SCREEN_CHANGE', 'DEVICE_INFO'];
+    var FORWARDED_TYPES = ['SCHEMA_UPDATE', 'THEME_UPDATE', 'SCREEN_CHANGE', 'DEVICE_INFO', 'SCREENSHOT_REQUEST'];
     window.addEventListener('message', function (event) {
       if (!event.data || typeof event.data !== 'object') return;
       var type = event.data.type;
